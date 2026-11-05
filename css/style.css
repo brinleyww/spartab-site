@@ -520,7 +520,7 @@ table.results {
 }
 .foot .wrap {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr;
   gap: 40px;
 }
 .foot h3 { color: #fff; font-size: 17px; }
