@@ -25,6 +25,14 @@
   html { scrollbar-color: var(--green) var(--paper); }
 }
 
+/* page to page cross-fade (chrome/edge/safari 18+, others just navigate) */
+@view-transition { navigation: auto; }
+.top { view-transition-name: site-top; }
+::view-transition-old(root) { animation: .2s ease-in both vt-out; }
+::view-transition-new(root) { animation: .35s ease-out both vt-in; }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; translate: 0 16px; } }
+
 /* sticky header covers anchor targets otherwise */
 :target { scroll-margin-top: 80px; }
 
@@ -134,9 +142,10 @@ p { margin: 0 0 1em; }
   cursor: pointer;
 }
 
-/* home */
+/* home. by default this is a normal hero; with .pin (added by main.js unless you
+   prefer reduced motion) the first screen stays put while the photo zooms and darkens */
 
-.hero { position: relative; }
+.hero { position: relative; overflow: clip; }
 .hero-pic {
   position: relative;
   overflow: hidden;
@@ -144,37 +153,61 @@ p { margin: 0 0 1em; }
   height: calc(100svh - 68px);
   min-height: 480px;
 }
-/* taller than its frame so it can drift down as you scroll without showing an edge */
-.hero img {
-  animation: settle 2s ease-out both;
+.hero-pic::after {
+  content: '';
   position: absolute;
-  left: 0;
-  top: -10%;
+  inset: 0;
+  background: #0b0d0c;
+  opacity: calc(var(--p, 0) * .72);
+}
+.hero img {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 110%;
+  height: 100%;
   object-fit: cover;
   object-position: center 40%;
+  scale: calc(1 + var(--p, 0) * .14);
+  animation: fade-in 1s both;
 }
 .hero .tag {
   position: absolute;
   left: 0;
-  bottom: -40px;
+  bottom: 48px;
   background: var(--green);
   color: #fff;
   padding: 28px 48px 26px;
   max-width: calc(100% - 24px);
   animation: slide-in .7s .3s ease-out both;
+  opacity: clamp(0, 1 - var(--p, 0) * 5, 1);
+  translate: calc(var(--p, 0) * -140px) 0;
 }
-.hero .tag h1 { margin: 0; font-size: 62px; }
-.hero .tag p {
-  margin: 6px 0 0;
-  font-size: 18px;
-  color: #dff5e8;
-  animation: fade-in .6s .8s both;
-}
+.hero-lines { display: none; }
 
-@keyframes settle { from { scale: 1.08; } }
-@keyframes slide-in { from { transform: translateX(-60px); opacity: 0; } }
+.pin .hero-stage {
+  height: calc(100vh - 68px + 120vh);
+  height: calc(100svh - 68px + 120svh);
+}
+.pin .hero { position: sticky; top: 68px; }
+.pin .hero-lines {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 max(24px, calc((100vw - 1100px) / 2 + 24px));
+  pointer-events: none;
+}
+.hero-lines p {
+  margin: 0 0 .1em;
+  color: #fff;
+  font: 700 clamp(38px, 6.6vw, 96px)/1.02 'Oswald', sans-serif;
+  text-transform: uppercase;
+  opacity: clamp(0, (var(--p, 0) - var(--at)) * 7, 1);
+  translate: 0 calc((1 - clamp(0, (var(--p, 0) - var(--at)) * 7, 1)) * 40px);
+}
+.hero-lines span { color: var(--mint); }
+@keyframes slide-in { from { transform: translateX(-105%); } }
 @keyframes fade-in { from { opacity: 0; } }
 
 /* home page video */
@@ -184,6 +217,8 @@ p { margin: 0 0 1em; }
   padding: 60px 0;
 }
 .reel h2 { color: #fff; margin-bottom: 18px; }
+/* the video is wider than the text column, so this section's wrap spans the page */
+.reel .wrap { max-width: none; }
 .reel-box {
   position: relative;
   aspect-ratio: 16 / 9;
@@ -244,41 +279,65 @@ p { margin: 0 0 1em; }
 }
 .sound-btn:hover { background: var(--mint); color: var(--dark); }
 
-/* robot name ticker */
+/* robot lineup. a swipeable row by default; with .pin, scrolling down slides it sideways */
 
-.ticker {
-  overflow: hidden;
-  background: var(--mint);
-  padding: 14px 0;
-}
-.ticker-track {
+.lineup { position: relative; padding: 60px 0; }
+.lineup-pin { display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+.lineup-head { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
+.lineup-head h2 { margin: 0; }
+.lineup-head a { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .04em; }
+.lineup-track {
   display: flex;
-  width: max-content;
-  animation: ticker 45s linear infinite;
+  gap: 18px;
+  overflow-x: auto;
+  padding: 0 max(24px, calc((100vw - 1100px) / 2 + 24px)) 12px;
 }
-.ticker:hover .ticker-track,
-.ticker:focus-within .ticker-track { animation-play-state: paused; }
-.ticker a {
-  font-family: 'Oswald', sans-serif;
-  font-weight: 700;
-  font-size: 64px;
-  line-height: 1.1;
-  text-transform: uppercase;
+.card {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(440px, 72vw);
+  height: min(58vh, 540px);
+  overflow: hidden;
+  background: #111;
+  color: #fff;
   text-decoration: none;
-  padding: 0 26px;
-  color: transparent;
-  -webkit-text-stroke: 1.5px var(--dark);
-  transition: color .2s;
 }
-.ticker a:nth-child(even),
-.ticker a:hover { color: var(--dark); }
-@keyframes ticker { to { transform: translateX(-50%); } }
+.card img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s; }
+.card-year {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  background: rgba(0,0,0,.6);
+  padding: 2px 10px;
+  font: 600 17px 'Oswald', sans-serif;
+  letter-spacing: .05em;
+}
+.card-name {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  background: var(--dark);
+  padding: 10px 20px 8px;
+  font: 700 clamp(32px, 4vw, 54px)/1 'Oswald', sans-serif;
+  text-transform: uppercase;
+  transition: background .25s, color .25s;
+}
+
+.pin .lineup { padding: 0; }
+.pin .lineup-pin {
+  position: sticky;
+  top: 68px;
+  height: calc(100vh - 68px);
+  height: calc(100svh - 68px);
+  overflow: hidden;
+}
+.pin .lineup-track { overflow: visible; width: max-content; padding-bottom: 0; }
 
 .intro {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
   gap: 60px;
-  padding: 100px 0 70px;
+  padding: 80px 0 70px;
 }
 .intro .lead { font-size: 22px; line-height: 1.5; }
 .intro aside {
@@ -327,39 +386,76 @@ table.results {
 .results td.num { white-space: nowrap; }
 .results tr.big td { background: #e3efe6; }
 
-.champs {
-  background: var(--dark);
-  color: #e8efe9;
-  padding: 80px 0;
+/* 2018 story. by default every line just shows; with .pin the section holds still
+   and each stretch of scrolling brings in the next line */
+
+.story { background: var(--dark); color: #e8efe9; }
+.story-pin { position: relative; overflow: hidden; padding: 80px 0; }
+.story-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .2;
+  filter: grayscale(.4);
+  scale: calc(1 + var(--p, 0) * .25);
 }
-.champs .wrap {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 50px;
+.story-year {
+  position: absolute;
+  right: max(24px, calc((100vw - 1100px) / 2 + 24px));
+  bottom: -.14em;
+  font: 700 min(36vw, 420px)/1 'Oswald', sans-serif;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(132,235,178,.35);
+  pointer-events: none;
+  translate: 0 calc((.5 - var(--p, 0)) * 140px);
+}
+.story-steps { position: relative; }
+.step {
+  margin: 0 0 .4em;
+  color: #fff;
+  font: 600 clamp(30px, 4.6vw, 64px)/1.08 'Oswald', sans-serif;
+  text-transform: uppercase;
+}
+.step h2 { margin: 0 0 .2em; color: var(--mint); font-size: clamp(48px, 8vw, 120px); }
+.step p { max-width: 640px; color: #dfe9e2; font: 400 18px/1.6 'IBM Plex Sans', Arial, sans-serif; text-transform: none; }
+.step a { color: var(--mint); }
+.story-ticks { display: none; }
+
+.pin .story { height: calc(100vh - 68px + 330vh); height: calc(100svh - 68px + 330svh); }
+.pin .story-pin {
+  position: sticky;
+  top: 68px;
+  height: calc(100vh - 68px);
+  height: calc(100svh - 68px);
+  padding: 0;
+  display: flex;
   align-items: center;
 }
-.champs { position: relative; overflow: hidden; }
-.champs .wrap { position: relative; }
-.champs-bg {
+.pin .story-steps { display: grid; width: 100%; }
+.pin .step {
+  grid-area: 1 / 1;
+  align-self: center;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 40px;
+  transition: opacity .45s, translate .45s, visibility 0s .45s;
+}
+.pin .step.on { opacity: 1; visibility: visible; translate: 0 0; transition-delay: 0s; }
+.pin .story-ticks {
   position: absolute;
-  left: 0;
-  top: -15%;
-  width: 100%;
-  height: 130%;
-  object-fit: cover;
-  opacity: .22;
-  filter: grayscale(.4);
+  left: max(24px, calc((100vw - 1100px) / 2 + 24px));
+  bottom: 34px;
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.champs .year span { display: inline-block; }
-.champs .year {
-  font-family: 'Oswald', sans-serif;
-  font-weight: 700;
-  font-size: 170px;
-  line-height: .85;
-  color: var(--mint);
-}
-.champs h2 { color: #fff; }
-.champs a { color: var(--mint); }
+.story-ticks li { width: 30px; height: 4px; background: rgba(255,255,255,.25); transition: background .3s; }
+.story-ticks li.on { background: var(--mint); }
 
 .photos {
   display: grid;
@@ -476,7 +572,7 @@ table.results {
   font-weight: 600;
   font-size: 15px;
 }
-.bot-pic { position: relative; overflow: hidden; max-width: 560px; height: 300px; background: #111; }
+.bot-pic { position: relative; overflow: hidden; max-width: 760px; height: 400px; background: #111; }
 .bot-pic img { position: absolute; left: 0; top: -8%; width: 100%; height: 116%; object-fit: cover; transition: transform .6s; }
 /* clip the img, not .bot-pic. intersection observer counts clip-path, so a fully clipped box never shows up as visible */
 .js .bot-pic img { clip-path: inset(0 100% 0 0); transition: clip-path 1s .25s cubic-bezier(.7,0,.2,1), transform .6s; }
@@ -575,6 +671,8 @@ table.results {
   .photos figure:hover img { transform: scale(1.06); }
   .photos figure:hover figcaption { background: var(--mint); color: var(--dark); }
   .bot-pic:hover img { transform: scale(1.04); }
+  .card:hover img { transform: scale(1.05); }
+  .card:hover .card-name { background: var(--mint); color: var(--dark); }
   .logos li:hover {
     transform: translateY(-4px);
     border-color: var(--green);
@@ -601,14 +699,14 @@ table.results {
   .hero .tag h1 { font-size: 40px; }
   .hero .tag { position: static; padding: 22px 24px; max-width: none; }
   .hero-pic { height: auto; min-height: 0; aspect-ratio: 2192 / 1302; }
+  .pin .hero-pic { height: calc(100svh - 68px); aspect-ratio: auto; }
+  .pin .hero .tag { position: absolute; bottom: 24px; right: 24px; }
   .intro, .season, .sponsor-cols { grid-template-columns: 1fr; gap: 30px; }
   .intro { padding: 40px 0; }
-  .champs .wrap { grid-template-columns: 1fr; gap: 10px; }
-  .champs .year { font-size: 110px; }
   .photos { grid-template-columns: 1fr 1fr; grid-auto-rows: 150px; }
   .photos .a { grid-column: span 2; }
   .photos .b, .photos .c, .photos .d, .photos .e { grid-column: span 1; grid-row: span 1; }
-  .ticker a { font-size: 44px; padding: 0 18px; }
+  .lineup-head h2 { font-size: 30px; }
   .reel { padding: 44px 0; }
   .sound-btn { right: 8px; bottom: 8px; padding: 7px 11px; font-size: 13px; }
   .paused-icon { width: 64px; height: 64px; margin: -32px 0 0 -32px; gap: 9px; }
@@ -619,7 +717,7 @@ table.results {
   .bot-year { font-size: 22px; }
   .bot-body { padding-left: 0; }
   .bot h2 { font-size: 38px; }
-  .bot-pic { height: 220px; }
+  .bot-pic { height: 240px; }
   .logos { grid-template-columns: repeat(3, 1fr); }
   .logos.big { grid-template-columns: 1fr 1fr; }
   .logos li { height: 90px; padding: 14px; }
@@ -651,6 +749,7 @@ table.results {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .js .reveal { opacity: 1; transform: none; }
   .js .bot-pic img { clip-path: none; }

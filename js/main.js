@@ -202,19 +202,52 @@ window.addEventListener('scroll', onScroll, { passive: true });
 window.addEventListener('resize', onScroll);
 onScroll();
 
-// depth while scrolling: hero drifts slower than the page, photos shift inside their frames,
-// the video opens up as it reaches the middle of the screen. all off for reduced motion
-var heroImg = document.querySelector('.hero img');
+// depth while scrolling: pinned sections on the home page (opening photo, robot lineup,
+// the 2018 story), photos shifting inside their frames, and the video opening up.
+// none of it runs if you prefer reduced motion; the pages work fine as plain scrolling pages
 var depthEls = document.querySelectorAll('[data-depth]');
 var cinema = document.querySelector('.reel-box');
+var heroStage = document.querySelector('.hero-stage');
+var story = document.querySelector('.story');
+var steps = document.querySelectorAll('.story .step');
+var ticks = document.querySelectorAll('.story-ticks li');
+var lineup = document.querySelector('.lineup');
+var track = document.querySelector('.lineup-track');
+var HEADER = 68;
 var ticking = false;
+
+// 0 when a pinned section reaches the top, 1 when it lets go
+function progress(el) {
+  var r = el.getBoundingClientRect();
+  var run = r.height - (window.innerHeight - HEADER);
+  if (run <= 0) return 0;
+  return Math.min(Math.max((HEADER - r.top) / run, 0), 1);
+}
+
+// the lineup section is as tall as the sideways distance it has to travel
+function sizeLineup() {
+  if (!lineup) return;
+  var travel = Math.max(track.scrollWidth - window.innerWidth, 0);
+  lineup.style.height = (window.innerHeight - HEADER + travel) + 'px';
+}
 
 function depth() {
   ticking = false;
   var vh = window.innerHeight;
 
-  if (heroImg && window.scrollY < vh * 1.5) {
-    heroImg.style.translate = '0 ' + (window.scrollY * .3).toFixed(1) + 'px';
+  if (heroStage) heroStage.style.setProperty('--p', progress(heroStage).toFixed(3));
+
+  if (lineup) {
+    var travel = Math.max(track.scrollWidth - window.innerWidth, 0);
+    track.style.translate = (-progress(lineup) * travel).toFixed(1) + 'px 0';
+  }
+
+  if (story) {
+    var sp = progress(story);
+    story.style.setProperty('--p', sp.toFixed(3));
+    var k = Math.min(steps.length - 1, Math.floor(sp * steps.length));
+    steps.forEach(function (st, i) { st.classList.toggle('on', i === k); });
+    ticks.forEach(function (t, i) { t.classList.toggle('on', i <= k); });
   }
 
   depthEls.forEach(function (el) {
@@ -238,6 +271,7 @@ function depth() {
 }
 
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  document.documentElement.classList.add('pin');
   var queueDepth = function () {
     if (!ticking) {
       ticking = true;
@@ -245,6 +279,10 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     }
   };
   window.addEventListener('scroll', queueDepth, { passive: true });
-  window.addEventListener('resize', queueDepth);
+  window.addEventListener('resize', function () {
+    sizeLineup();
+    queueDepth();
+  });
+  sizeLineup();
   depth();
 }
