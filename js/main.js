@@ -201,3 +201,50 @@ if (line) {
 window.addEventListener('scroll', onScroll, { passive: true });
 window.addEventListener('resize', onScroll);
 onScroll();
+
+// depth while scrolling: hero drifts slower than the page, photos shift inside their frames,
+// the video opens up as it reaches the middle of the screen. all off for reduced motion
+var heroImg = document.querySelector('.hero img');
+var depthEls = document.querySelectorAll('[data-depth]');
+var cinema = document.querySelector('.reel-box');
+var ticking = false;
+
+function depth() {
+  ticking = false;
+  var vh = window.innerHeight;
+
+  if (heroImg && window.scrollY < vh * 1.5) {
+    heroImg.style.translate = '0 ' + (window.scrollY * .3).toFixed(1) + 'px';
+  }
+
+  depthEls.forEach(function (el) {
+    var frame = el.parentNode.getBoundingClientRect();
+    if (frame.bottom < -100 || frame.top > vh + 100) return;
+    var max = el.dataset.max ? +el.dataset.max : el.parentNode.offsetHeight * .07;
+    var d = -(frame.top + frame.height / 2 - vh / 2) * parseFloat(el.dataset.depth);
+    el.style.translate = '0 ' + Math.max(-max, Math.min(max, d)).toFixed(1) + 'px';
+  });
+
+  if (cinema && window.innerWidth > 860) {
+    var r = cinema.getBoundingClientRect();
+    var p = 1 - Math.min(Math.abs(r.top + r.height / 2 - vh / 2) / (vh * .8), 1);
+    p = 1 - Math.pow(1 - p, 3);
+    cinema.style.scale = (.86 + .14 * p).toFixed(4);
+    cinema.style.borderRadius = (18 * (1 - p)).toFixed(1) + 'px';
+  } else if (cinema) {
+    cinema.style.scale = '';
+    cinema.style.borderRadius = '';
+  }
+}
+
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  var queueDepth = function () {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(depth);
+    }
+  };
+  window.addEventListener('scroll', queueDepth, { passive: true });
+  window.addEventListener('resize', queueDepth);
+  depth();
+}

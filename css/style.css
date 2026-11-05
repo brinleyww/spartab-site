@@ -137,14 +137,21 @@ p { margin: 0 0 1em; }
 /* home */
 
 .hero { position: relative; }
-.hero-pic { overflow: hidden; }
+.hero-pic {
+  position: relative;
+  overflow: hidden;
+  height: calc(100vh - 68px);
+  height: calc(100svh - 68px);
+  min-height: 480px;
+}
+/* taller than its frame so it can drift down as you scroll without showing an edge */
 .hero img {
   animation: settle 2s ease-out both;
+  position: absolute;
+  left: 0;
+  top: -10%;
   width: 100%;
-  height: 72vh;
-  height: 72svh;
-  min-height: 420px;
-  max-height: 760px;
+  height: 110%;
   object-fit: cover;
   object-position: center 40%;
 }
@@ -166,7 +173,7 @@ p { margin: 0 0 1em; }
   animation: fade-in .6s .8s both;
 }
 
-@keyframes settle { from { transform: scale(1.08); } }
+@keyframes settle { from { scale: 1.08; } }
 @keyframes slide-in { from { transform: translateX(-60px); opacity: 0; } }
 @keyframes fade-in { from { opacity: 0; } }
 
@@ -176,12 +183,16 @@ p { margin: 0 0 1em; }
   background: #0c0b12;
   padding: 60px 0;
 }
-.reel h2 { color: #fff; }
+.reel h2 { color: #fff; margin-bottom: 18px; }
 .reel-box {
   position: relative;
   aspect-ratio: 16 / 9;
   background: #000;
+  width: min(1400px, calc(100vw - 48px), calc((100svh - 150px) * 16 / 9));
+  margin: 0 auto;
+  overflow: hidden;
 }
+.reel h2 { width: min(1400px, calc(100vw - 48px), calc((100svh - 150px) * 16 / 9)); margin-left: auto; margin-right: auto; }
 .reel video { width: 100%; height: 100%; display: block; cursor: pointer; }
 .reel video:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; }
 
@@ -327,6 +338,19 @@ table.results {
   gap: 50px;
   align-items: center;
 }
+.champs { position: relative; overflow: hidden; }
+.champs .wrap { position: relative; }
+.champs-bg {
+  position: absolute;
+  left: 0;
+  top: -15%;
+  width: 100%;
+  height: 130%;
+  object-fit: cover;
+  opacity: .22;
+  filter: grayscale(.4);
+}
+.champs .year span { display: inline-block; }
 .champs .year {
   font-family: 'Oswald', sans-serif;
   font-weight: 700;
@@ -344,7 +368,15 @@ table.results {
   gap: 8px;
 }
 .photos figure { margin: 0; position: relative; overflow: hidden; }
-.photos img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s; }
+.photos img {
+  position: absolute;
+  left: 0;
+  top: -8%;
+  width: 100%;
+  height: 116%;
+  object-fit: cover;
+  transition: transform .6s;
+}
 .photos figcaption {
   position: absolute;
   left: 0;
@@ -444,8 +476,8 @@ table.results {
   font-weight: 600;
   font-size: 15px;
 }
-.bot-pic { overflow: hidden; max-width: 560px; }
-.bot-pic img { width: 100%; height: 300px; object-fit: cover; background: #111; transition: transform .6s; }
+.bot-pic { position: relative; overflow: hidden; max-width: 560px; height: 300px; background: #111; }
+.bot-pic img { position: absolute; left: 0; top: -8%; width: 100%; height: 116%; object-fit: cover; transition: transform .6s; }
 /* clip the img, not .bot-pic. intersection observer counts clip-path, so a fully clipped box never shows up as visible */
 .js .bot-pic img { clip-path: inset(0 100% 0 0); transition: clip-path 1s .25s cubic-bezier(.7,0,.2,1), transform .6s; }
 .js .bot-pic.seen img { clip-path: inset(0); }
@@ -568,7 +600,7 @@ table.results {
   h1 { font-size: 42px; }
   .hero .tag h1 { font-size: 40px; }
   .hero .tag { position: static; padding: 22px 24px; max-width: none; }
-  .hero img { height: auto; min-height: 0; max-height: none; }
+  .hero-pic { height: auto; min-height: 0; aspect-ratio: 2192 / 1302; }
   .intro, .season, .sponsor-cols { grid-template-columns: 1fr; gap: 30px; }
   .intro { padding: 40px 0; }
   .champs .wrap { grid-template-columns: 1fr; gap: 10px; }
@@ -587,7 +619,7 @@ table.results {
   .bot-year { font-size: 22px; }
   .bot-body { padding-left: 0; }
   .bot h2 { font-size: 38px; }
-  .bot-pic img { height: 220px; }
+  .bot-pic { height: 220px; }
   .logos { grid-template-columns: repeat(3, 1fr); }
   .logos.big { grid-template-columns: 1fr 1fr; }
   .logos li { height: 90px; padding: 14px; }
