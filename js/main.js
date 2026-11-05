@@ -44,25 +44,54 @@ if ('IntersectionObserver' in window) {
   watched.forEach(function (el) { el.classList.add('seen'); });
 }
 
-// home page video: plays muted while it's on screen
+// home page video: plays while it's on screen, with sound unless you turned it off
 var reel = document.querySelector('.reel video');
 var soundBtn = document.querySelector('.sound-btn');
 
 if (reel) {
   var stillPlease = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var wantSound = true;
+  try { wantSound = localStorage.getItem('reelSound') !== 'off'; } catch (e) {}
 
+  var showSound = function () {
+    soundBtn.textContent = reel.muted ? 'Sound off' : 'Sound on';
+    soundBtn.setAttribute('aria-pressed', !reel.muted);
+  };
+
+  var start = function () {
+    reel.muted = !wantSound;
+    reel.play().then(showSound).catch(function () {
+      // browsers block sound until you've clicked or tapped the page once, so start muted
+      reel.muted = true;
+      showSound();
+      // low power mode etc can block autoplay completely, give them the normal controls then
+      reel.play().catch(function () { reel.controls = true; });
+    });
+  };
+
+  // first click/tap/key anywhere turns the sound on if the browser blocked it
+  var unlock = function (e) {
+    if (e.target.closest && e.target.closest('.sound-btn')) return;
+    if (wantSound && reel.muted && !reel.paused) {
+      reel.muted = false;
+      showSound();
+    }
+    if (!reel.muted || !wantSound) {
+      ['pointerdown', 'keydown'].forEach(function (ev) { document.removeEventListener(ev, unlock); });
+    }
+  };
+  ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, unlock); });
+
+  reel.muted = !wantSound;
   if (stillPlease || !('IntersectionObserver' in window)) {
     reel.controls = true;
   } else {
     new IntersectionObserver(function (entries) {
-      if (entries[0].isIntersecting) {
-        // low power mode etc can block autoplay, give them the normal controls then
-        reel.play().catch(function () { reel.controls = true; });
-      } else {
-        reel.pause();
-      }
+      if (entries[0].isIntersecting) start();
+      else reel.pause();
     }, { threshold: 0.4 }).observe(reel);
   }
+  showSound();
 
   reel.addEventListener('click', function () {
     if (reel.controls) return;
@@ -70,13 +99,11 @@ if (reel) {
   });
 
   soundBtn.addEventListener('click', function () {
-    reel.muted = !reel.muted;
-    if (!reel.muted) {
-      reel.currentTime = 0;
-      reel.play();
-    }
-    soundBtn.textContent = reel.muted ? 'Sound on' : 'Sound off';
-    soundBtn.setAttribute('aria-pressed', !reel.muted);
+    wantSound = reel.muted;
+    reel.muted = !wantSound;
+    try { localStorage.setItem('reelSound', wantSound ? 'on' : 'off'); } catch (e) {}
+    if (reel.paused && !reel.controls) reel.play();
+    showSound();
   });
 }
 
