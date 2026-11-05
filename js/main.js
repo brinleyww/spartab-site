@@ -82,27 +82,78 @@ if (reel) {
   };
   ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, unlock); });
 
+  // the logo intro only plays the first time, after that it loops from the first photo.
+  // jumping back a couple of frames early keeps the beat going instead of waiting on 'ended'
+  var loopFrom = parseFloat(reel.dataset.loopFrom) || 0;
+  var loopBack = function () { reel.currentTime = loopFrom; };
+  if ('requestVideoFrameCallback' in reel) {
+    var watchEnd = function (now, meta) {
+      if (meta.mediaTime >= reel.duration - .045) loopBack();
+      reel.requestVideoFrameCallback(watchEnd);
+    };
+    reel.requestVideoFrameCallback(watchEnd);
+  }
+  reel.addEventListener('ended', function () {
+    loopBack();
+    reel.play();
+  });
+
+  // paused icon. waits a moment so it doesn't flash when the video loops or scrolls back in
+  var box = reel.parentNode;
+  var iconTimer;
+  reel.addEventListener('pause', function () {
+    clearTimeout(iconTimer);
+    iconTimer = setTimeout(function () {
+      if (reel.paused && !reel.ended && !reel.controls) box.classList.add('paused');
+    }, 150);
+  });
+  reel.addEventListener('play', function () {
+    clearTimeout(iconTimer);
+    box.classList.remove('paused');
+  });
+
+  // if you paused it yourself it stays paused, even after scrolling away and back
+  var userPaused = false;
+  var toggle = function () {
+    if (reel.controls) return;
+    if (reel.paused) {
+      userPaused = false;
+      reel.play();
+    } else {
+      userPaused = true;
+      reel.pause();
+    }
+  };
+  reel.addEventListener('click', toggle);
+  reel.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.key === 'Enter' || e.key === 'k') {
+      e.preventDefault();
+      toggle();
+    }
+  });
+
   reel.muted = !wantSound;
   if (stillPlease || !('IntersectionObserver' in window)) {
     reel.controls = true;
   } else {
     new IntersectionObserver(function (entries) {
-      if (entries[0].isIntersecting) start();
-      else reel.pause();
+      if (entries[0].isIntersecting) {
+        if (!userPaused) start();
+      } else {
+        reel.pause();
+      }
     }, { threshold: 0.4 }).observe(reel);
   }
   showSound();
-
-  reel.addEventListener('click', function () {
-    if (reel.controls) return;
-    reel.paused ? reel.play() : reel.pause();
-  });
 
   soundBtn.addEventListener('click', function () {
     wantSound = reel.muted;
     reel.muted = !wantSound;
     try { localStorage.setItem('reelSound', wantSound ? 'on' : 'off'); } catch (e) {}
-    if (reel.paused && !reel.controls) reel.play();
+    if (reel.paused && !reel.controls) {
+      userPaused = false;
+      reel.play();
+    }
     showSound();
   });
 }
