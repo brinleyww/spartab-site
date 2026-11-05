@@ -199,6 +199,8 @@ p { margin: 0 0 1em; }
   transition: background .2s, color .2s;
 }
 .sound-btn:hover { background: var(--mint); color: var(--dark); }
+.reel-credit { margin: 12px 0 0; font-size: 13px; color: #9a98a8; }
+.reel-credit a { color: #c9c7d6; }
 
 /* robot name ticker */
 
