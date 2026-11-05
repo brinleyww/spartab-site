@@ -44,6 +44,42 @@ if ('IntersectionObserver' in window) {
   watched.forEach(function (el) { el.classList.add('seen'); });
 }
 
+// home page video: plays muted while it's on screen
+var reel = document.querySelector('.reel video');
+var soundBtn = document.querySelector('.sound-btn');
+
+if (reel) {
+  var stillPlease = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (stillPlease || !('IntersectionObserver' in window)) {
+    reel.controls = true;
+  } else {
+    new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) {
+        // low power mode etc can block autoplay, give them the normal controls then
+        reel.play().catch(function () { reel.controls = true; });
+      } else {
+        reel.pause();
+      }
+    }, { threshold: 0.4 }).observe(reel);
+  }
+
+  reel.addEventListener('click', function () {
+    if (reel.controls) return;
+    reel.paused ? reel.play() : reel.pause();
+  });
+
+  soundBtn.addEventListener('click', function () {
+    reel.muted = !reel.muted;
+    if (!reel.muted) {
+      reel.currentTime = 0;
+      reel.play();
+    }
+    soundBtn.textContent = reel.muted ? 'Sound on' : 'Sound off';
+    soundBtn.setAttribute('aria-pressed', !reel.muted);
+  });
+}
+
 // header shadow + robots timeline
 var header = document.querySelector('.top');
 var line = document.querySelector('.tl-line span');
