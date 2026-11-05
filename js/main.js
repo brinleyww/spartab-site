@@ -44,118 +44,36 @@ if ('IntersectionObserver' in window) {
   watched.forEach(function (el) { el.classList.add('seen'); });
 }
 
-// home page video: plays while it's on screen, with sound unless you turned it off
-var reel = document.querySelector('.reel video');
-var soundBtn = document.querySelector('.sound-btn');
+// home page video. youtube's own loop flashes the end screen and rebuffers,
+// so jump back to the start just before the end instead
+var ytFrame = document.querySelector('.reel iframe');
 
-if (reel) {
-  var stillPlease = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var wantSound = true;
-  try { wantSound = localStorage.getItem('reelSound') !== 'off'; } catch (e) {}
-
-  var showSound = function () {
-    soundBtn.textContent = reel.muted ? 'Sound off' : 'Sound on';
-    soundBtn.setAttribute('aria-pressed', !reel.muted);
-  };
-
-  var start = function () {
-    reel.muted = !wantSound;
-    reel.play().then(showSound).catch(function () {
-      // browsers block sound until you've clicked or tapped the page once, so start muted
-      reel.muted = true;
-      showSound();
-      // low power mode etc can block autoplay completely, give them the normal controls then
-      reel.play().catch(function () { reel.controls = true; });
+if (ytFrame) {
+  window.onYouTubeIframeAPIReady = function () {
+    var player;
+    var watching = false;
+    var watch = function () {
+      if (!watching) return;
+      var left = player.getDuration() - player.getCurrentTime();
+      if (left > 0 && left < .25) player.seekTo(0, true);
+      requestAnimationFrame(watch);
+    };
+    player = new YT.Player(ytFrame, {
+      events: {
+        onStateChange: function (e) {
+          watching = e.data === YT.PlayerState.PLAYING;
+          if (watching) requestAnimationFrame(watch);
+          if (e.data === YT.PlayerState.ENDED) {
+            player.seekTo(0, true);
+            player.playVideo();
+          }
+        }
+      }
     });
   };
-
-  // first click/tap/key anywhere turns the sound on if the browser blocked it
-  var unlock = function (e) {
-    if (e.target.closest && e.target.closest('.sound-btn')) return;
-    if (wantSound && reel.muted && !reel.paused) {
-      reel.muted = false;
-      showSound();
-    }
-    if (!reel.muted || !wantSound) {
-      ['pointerdown', 'keydown'].forEach(function (ev) { document.removeEventListener(ev, unlock); });
-    }
-  };
-  ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, unlock); });
-
-  // the logo intro only plays the first time, after that it loops from the first photo.
-  // jumping back a couple of frames early keeps the beat going instead of waiting on 'ended'
-  var loopFrom = parseFloat(reel.dataset.loopFrom) || 0;
-  var loopBack = function () { reel.currentTime = loopFrom; };
-  if ('requestVideoFrameCallback' in reel) {
-    var watchEnd = function (now, meta) {
-      if (meta.mediaTime >= reel.duration - .045) loopBack();
-      reel.requestVideoFrameCallback(watchEnd);
-    };
-    reel.requestVideoFrameCallback(watchEnd);
-  }
-  reel.addEventListener('ended', function () {
-    loopBack();
-    reel.play();
-  });
-
-  // paused icon. waits a moment so it doesn't flash when the video loops or scrolls back in
-  var box = reel.parentNode;
-  var iconTimer;
-  reel.addEventListener('pause', function () {
-    clearTimeout(iconTimer);
-    iconTimer = setTimeout(function () {
-      if (reel.paused && !reel.ended && !reel.controls) box.classList.add('paused');
-    }, 150);
-  });
-  reel.addEventListener('play', function () {
-    clearTimeout(iconTimer);
-    box.classList.remove('paused');
-  });
-
-  // if you paused it yourself it stays paused, even after scrolling away and back
-  var userPaused = false;
-  var toggle = function () {
-    if (reel.controls) return;
-    if (reel.paused) {
-      userPaused = false;
-      reel.play();
-    } else {
-      userPaused = true;
-      reel.pause();
-    }
-  };
-  reel.addEventListener('click', toggle);
-  reel.addEventListener('keydown', function (e) {
-    if (e.key === ' ' || e.key === 'Enter' || e.key === 'k') {
-      e.preventDefault();
-      toggle();
-    }
-  });
-
-  reel.muted = !wantSound;
-  if (stillPlease || !('IntersectionObserver' in window)) {
-    reel.controls = true;
-  } else {
-    new IntersectionObserver(function (entries) {
-      if (entries[0].isIntersecting) {
-        if (!userPaused) start();
-      } else {
-        reel.pause();
-      }
-    }, { threshold: 0.4 }).observe(reel);
-  }
-  showSound();
-
-  soundBtn.addEventListener('click', function () {
-    wantSound = reel.muted;
-    reel.muted = !wantSound;
-    try { localStorage.setItem('reelSound', wantSound ? 'on' : 'off'); } catch (e) {}
-    if (reel.paused && !reel.controls) {
-      userPaused = false;
-      reel.play();
-    }
-    showSound();
-  });
+  var api = document.createElement('script');
+  api.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(api);
 }
 
 // header shadow + robots timeline
